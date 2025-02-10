@@ -1,0 +1,205 @@
+﻿@rendermode RenderMode.InteractiveServer
+@layout EUC.Components.Layout.QuestionnaireLayout
+@inject IStringLocalizer<Resource> Localizer
+@inject NavigationManager Navigation
+@inject ISexService SexService
+@inject ILanguageService LanguageService
+@inject INationalityService NationalityService
+@inject IQuestionnaireService QuestionnaireService
+@using System.Text.RegularExpressions
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@using EUC.Locales
+@using EUC.Models
+@using EUC.Services
+@using Microsoft.Extensions.Localization
+@using static EUC.Models.QuestionnaireEnums
+
+@if (IsLoading)
+{
+	<MudStack AlignItems="AlignItems.Center" Spacing="5">
+		<MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+		<MudText Typo="Typo.h5" Class="ml-5">@(@Localizer["Text_Loading"])</MudText>
+	</MudStack>
+}
+else
+{
+	<MudForm @ref="form" Model="@model">
+		<MudText Typo="Typo.h5">@(@Localizer["Text_Questionnaire"])</MudText>
+		<MudDivider Class="questionnaire-divider" />
+		<LanguagePicker />
+		<MudTextField @bind-Value="model.FirstName"
+					  Label=@(@Localizer["Label_FirstName"])
+					  Required
+					  RequiredError=@(@Localizer["Label_FirstName_RequiredError"])
+					  Validation="@(new Func<string, string>(ValidationService.GetNameErrors))"
+					  Variant="Variant.Outlined" />
+		<MudTextField @bind-Value="model.LastName"
+					  Label=@(@Localizer["Label_LastName"])
+					  Required
+					  RequiredError=@(@Localizer["Label_LastName_RequiredError"])
+					  Validation="@(new Func<string, string>(ValidationService.GetNameErrors))"
+					  Variant="Variant.Outlined" />
+		<MudTextField @ref=birthNumberField
+					  @bind-Value="model.BirthNumber"
+					  @onblur=@(BirthNumberField_OnBlur)
+					  Label=@(@Localizer["Label_BirthNumber"])
+					  Disabled="@(model.HasNoBirthNumber)"
+					  Required="@(!model.HasNoBirthNumber)"
+					  RequiredError=@(@Localizer["Label_BirthNumber_RequiredError"])
+					  Validation="@(new Func<string, string>(ValidationService.GetBirthNumberErrors))"
+					  Variant="Variant.Outlined" />
+		<MudCheckBox @bind-Value="model.HasNoBirthNumber"
+					 @onblur=@(() => HasBirthNumberField_OnBlur())>
+			@(@Localizer["Label_HasBirthNumber"])
+		</MudCheckBox>
+		<MudDatePicker @bind-Date="model.Birthday"
+					   Label=@(@Localizer["Label_Birthday"])
+					   Disabled="@(!model.HasNoBirthNumber)"
+					   Required
+					   RequiredError=@(@Localizer["Label_Birthday_RequiredError"])
+					   ShowToolbar="false"
+					   Variant="Variant.Outlined"
+					   MaxDate="DateTime.Today" />
+		<MudSelect @bind-Value="model.Sex"
+				   Variant="Variant.Outlined"
+				   Label=@(@Localizer["Label_Sex"])
+				   Clearable
+				   Required
+				   RequiredError=@(@Localizer["Label_Sex_RequiredError"])>
+			@foreach (SexInfo option in sexOptions)
+			{
+				<MudSelectItem Value="(Sex?)option.Sex">@option.Text</MudSelectItem>
+			}
+		</MudSelect>
+		<MudTextField @bind-Value="model.Email"
+					  Label=@(@Localizer["Label_Email"])
+					  Required
+					  RequiredError=@(@Localizer["Label_Email_RequiredError"])
+					  Validation="@(new Func<string, string>(ValidationService.GetEmailErrors))"
+					  Variant="Variant.Outlined" />
+		<MudSelect @bind-Value="model.Nationality"
+				   Variant="Variant.Outlined"
+				   Label=@(@Localizer["Label_Nationality"])
+				   Required
+				   RequiredError="@(@Localizer["Label_Nationality_RequiredError"])"
+				   Clearable>
+			@foreach (NationalityInfo option in nationalityOptions)
+			{
+				<MudSelectItem Value="(Nationality?)option.Nationality">
+					<img src="@option.FlagUrl" height="14" class="mr-1" /> @option.Text
+				</MudSelectItem>
+			}
+		</MudSelect>
+		<MudCheckBox @bind-Value="model.DidAcceptGdpr"
+					 Required
+					 RequiredError="@(@Localizer["Label_GdprAcceptance_RequiredError"])">
+			@(@Localizer["Label_GdprAcceptance"])
+		</MudCheckBox>
+
+		<MudDivider Class="questionnaire-divider" />
+
+		<MudCardActions>
+			<MudText Class="cursor-pointer" @onclick="DownloadGdpr">
+				@(@Localizer["Button_DownloadGdpr"])
+			</MudText>
+			<MudButton OnClick="Submit"
+					   Variant="Variant.Filled"
+					   Color="Color.Dark"
+					   Class="ml-auto">
+				@(@Localizer["Button_Send"])
+			</MudButton>
+		</MudCardActions>
+	</MudForm>
+}
+
+@code {
+	private readonly QuestionnaireModel model = new();
+	private IEnumerable<SexInfo> sexOptions = Enumerable.Empty<SexInfo>();
+	private IEnumerable<NationalityInfo> nationalityOptions = Enumerable.Empty<NationalityInfo>();
+	private bool IsLoading = false;
+
+	MudTextField<string> birthNumberField = new();
+	MudForm form = new();
+
+	protected override async Task OnInitializedAsync()
+	{
+		sexOptions = await SexService.GetDropdownSexOptions();
+		nationalityOptions = await NationalityService.GetDropdownNationalityOptions();
+	}
+
+	public void BirthNumberField_OnBlur()
+	{
+		TryChangeBirthdayValue();
+		TryChangeSexValue();
+	}
+
+	public void HasBirthNumberField_OnBlur()
+	{
+		model.BirthNumber = "";
+		birthNumberField.Clear();
+	}
+
+	public void TryChangeBirthdayValue()
+	{
+		if (string.IsNullOrWhiteSpace(ValidationService.GetBirthNumberErrors(model.BirthNumber)))
+		{
+			DateTime? birthDate = BirthNumberService.TryCalculateBirthdate(model.BirthNumber);
+
+			if (birthDate.HasValue && birthDate.Value <= DateTime.Today)
+			{
+				model.Birthday = birthDate;
+			}
+		}
+	}
+
+	public void TryChangeSexValue()
+	{
+		if (string.IsNullOrWhiteSpace(ValidationService.GetBirthNumberErrors(model.BirthNumber)))
+		{
+			bool? isFemale = BirthNumberService.IsFemale(model.BirthNumber);
+
+			if (isFemale.HasValue)
+			{
+				if (isFemale.Value)
+				{
+					model.Sex = Sex.Woman;
+				}
+				else
+				{
+					model.Sex = Sex.Man;
+				}
+			}
+		}
+	}
+
+	private async Task Submit()
+	{
+		IsLoading = true;
+
+		await form.Validate();
+
+		if (form.IsValid)
+		{
+			int? result = await QuestionnaireService.InsertQuestionnaire(model);
+
+			if (result.HasValue)
+			{
+				Navigation.NavigateTo($"/questionnaire/success?id={result.Value}");
+			}
+			else
+			{
+				Navigation.NavigateTo("/questionnaire/failed");
+			}
+		}
+
+		IsLoading = false;
+	}
+
+	private void DownloadGdpr()
+	{
+		var fileName = "GDPR.pdf";
+		var url = $"/api/download/file/{fileName}";
+		Navigation.NavigateTo(url, forceLoad: true);
+	}
+}

@@ -1,0 +1,19 @@
+﻿@page "/questionnaire/failed"
+@using EUC.Locales
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Resource> Localizer
+
+<div class="questionnaire-text-wrapper">
+	<div class="questionnaire-header-text-container">
+		@(@Localizer["Text_Questionnaire_Failed"])
+	</div>
+
+	<div class="questionnaire-text-container">
+		<a href="/">@(@Localizer["Text_Questionnaire_TryItAgain"])</a>
+	</div>
+</div>
+
+
+@code {
+
+}

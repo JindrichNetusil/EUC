@@ -1,0 +1,47 @@
+﻿@using EUC.Locales
+@using EUC.Models
+@using EUC.Services
+@using Microsoft.Extensions.Localization
+@using System.Globalization
+@inject IStringLocalizer<Resource> Localizer
+@inject ILanguageService LanguageService
+@inject NavigationManager Navigation
+
+<MudSelect @bind-Value="Culture"
+		   Variant="Variant.Outlined"
+		   Label=@(@Localizer["Label_LanguageSelect"])>
+	@foreach (LanguageInfo option in _LanguagesOptions)
+	{
+		<MudSelectItem Value="option.Culture">
+			<img src="@option.FlagUrl" height="14" class="mr-1" /> @option.Text
+		</MudSelectItem>
+	}
+</MudSelect>
+
+@code {
+	private CultureInfo Culture
+	{
+		get
+		{
+			return CultureInfo.CurrentCulture;
+		}
+		set
+		{
+			if (CultureInfo.CurrentCulture != value)
+			{
+				var uri = new Uri(Navigation.Uri).GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
+				var cultureEscaped = Uri.EscapeDataString(value.Name);
+				var uriEscaped = Uri.EscapeDataString(uri);
+
+				Navigation.NavigateTo($"api/culture/set?culture={cultureEscaped}&redirectUri={uriEscaped}", forceLoad: true);
+			}
+		}
+	}
+
+	private IEnumerable<LanguageInfo> _LanguagesOptions = Enumerable.Empty<LanguageInfo>();
+
+	protected override async Task OnInitializedAsync()
+	{
+		_LanguagesOptions = await LanguageService.GetDropdownLanguagesOptions();
+	}
+}

@@ -1,0 +1,15 @@
+﻿@inherits LayoutComponentBase
+
+<MudThemeProvider @rendermode="InteractiveServer" />
+<MudPopoverProvider @rendermode="InteractiveServer" />
+<MudDialogProvider @rendermode="InteractiveServer" />
+<MudSnackbarProvider @rendermode="InteractiveServer" />
+
+<MudLayout>
+	<MudAppBar Elevation="1" Color="Color.Dark">
+		<MudText Typo="Typo.h5" Class="ml-3">EUC</MudText>
+	</MudAppBar>
+	<MudMainContent>
+		@Body
+	</MudMainContent>
+</MudLayout>

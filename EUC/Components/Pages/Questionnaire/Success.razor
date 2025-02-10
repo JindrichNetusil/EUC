@@ -1,0 +1,58 @@
+﻿@page "/questionnaire/success"
+@rendermode RenderMode.InteractiveServer
+@inject NavigationManager Navigation
+@inject IQuestionnaireService QuestionnaireService
+@inject Microsoft.JSInterop.IJSRuntime JS
+@inject IStringLocalizer<Resource> Localizer
+@using EUC.Locales
+@using EUC.Services
+@using Microsoft.AspNetCore.WebUtilities;
+@using Microsoft.Extensions.Localization
+
+@if (Id is null)
+{
+	<div class="questionnaire-text-wrapper">
+		<div class="questionnaire-header-text-container">
+			@(@Localizer["Text_Loading"])
+		</div>
+	</div>
+}
+else
+{
+	<div class="questionnaire-text-wrapper">
+		<div class="questionnaire-header-text-container">
+			@(@Localizer["Text_Questionnaire_Success"])
+		</div>
+
+		<div class="questionnaire-text-container">
+			<MudText Typo="Typo.body1" Class="cursor-pointer" @onclick=DownloadJson>
+				@(@Localizer["Text_Questionnaire_DownloadInsertedDataJson"])
+			</MudText>
+		</div>
+
+		<div class="questionnaire-text-container">
+			<a href="/">@(@Localizer["Text_Questionnaire_NextQuestionnaire"])</a>
+		</div>
+	</div>
+}
+
+@code {
+	[Parameter] public string? Id { get; set; }
+
+	protected override void OnInitialized()
+	{
+		var uri = Navigation.Uri;
+		var queryParams = QueryHelpers.ParseQuery(new Uri(uri).Query);
+
+		Id = queryParams.ContainsKey("id") ? queryParams["id"].ToString() : null;
+	}
+
+	public async Task DownloadJson()
+	{
+		if (int.TryParse(Id, out int questionnaireId))
+		{
+			var url = $"/api/download/questionnaire/{questionnaireId}";
+			Navigation.NavigateTo(url, forceLoad: true);
+		}
+	}
+}
