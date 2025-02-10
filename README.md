@@ -88,4 +88,3 @@ Závìr
 - Linkedin: https://www.linkedin.com/in/jnetusil/
 - Email: jindrich.netusil@seznam.cz
 - Telefon: +420 777 788 786
-# EUC
